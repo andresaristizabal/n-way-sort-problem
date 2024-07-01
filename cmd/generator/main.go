@@ -6,12 +6,25 @@ import (
 	"math/rand"
 	"n-way-sort/pkg"
 	"os"
+	"sync"
 )
 
 func main() {
 
-	mc := make(chan []byte)
-	fileSize := int64(1_073_741_824)
+	writeFileCh := make(chan []byte)
+	fileSize := int64(20 * 1_073_741_824)
+	var mainBufferWG sync.WaitGroup
+
+	nBlocks := fileSize / pkg.Page
+
+	nBuffers := int64(20)
+
+	blocksByGroup := nBlocks / nBuffers
+
+	if blocksByGroup < 1 {
+		panic("bad group blocks")
+	}
+
 	file, err := os.Create("input.txt")
 	if err != nil {
 		log.Panic("can not create file")
@@ -19,46 +32,36 @@ func main() {
 	defer file.Close()
 	b := bufio.NewWriter(file)
 	defer b.Flush()
-	sizeCh := writeFile(b, mc)
+
+	for i := int64(0); i < nBuffers; i++ {
+		mainBufferWG.Add(1)
+		go generateBuff(writeFileCh, blocksByGroup, &mainBufferWG)
+	}
 
 	go func() {
 		for {
-			<-sizeCh
-			stat, err := file.Stat()
-			if err != nil {
-				panic("can not get file stat")
-			}
-			fileSizeC := stat.Size()
-			if fileSizeC >= fileSize {
-				close(mc)
-				close(sizeCh)
-				os.Exit(1)
-			}
+			v := <-writeFileCh
+			b.Write(v)
 		}
 	}()
-
-	for true {
-		mc <- RandStringBytes(pkg.Page)
-	}
-
+	mainBufferWG.Wait()
 }
 
-func writeFile(f *bufio.Writer, ch chan []byte) chan int {
-	size := make(chan int)
-	go func() {
-		for {
-			v := <-ch
-			n, _ := f.Write(v)
-			size <- n
-		}
-	}()
-	return size
+func generateBuff(writeFileCh chan []byte, blocksByGroup int64, wg *sync.WaitGroup) {
+	writeBf := make([]byte, blocksByGroup*pkg.Page)
+	var generateWaitGroup sync.WaitGroup
+	for i := int64(0); i < blocksByGroup; i++ {
+		generateWaitGroup.Add(1)
+		go RandStringBytes(writeBf, pkg.Page*i, &generateWaitGroup)
+	}
+	generateWaitGroup.Wait()
+	writeFileCh <- writeBf
+	wg.Done()
 }
 
-func RandStringBytes(n int) []byte {
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = byte(rand.Intn(255))
+func RandStringBytes(groupBuffer []byte, startOffset int64, group *sync.WaitGroup) {
+	for i := int64(0); i < pkg.Page; i++ {
+		groupBuffer[i+startOffset] = byte(rand.Intn(255))
 	}
-	return b
+	group.Done()
 }
