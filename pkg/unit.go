@@ -1,3 +1,3 @@
 package pkg
 
-const Page = 4096
+const Page = int64(4096)
