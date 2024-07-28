@@ -11,45 +11,27 @@ import (
 	"sync"
 )
 
-type Lock struct {
-	limit   int
-	current int
-	mu      sync.Mutex
-}
-
-func (l *Lock) Check() {
-	if l.current >= l.limit {
-		l.mu.Lock()
+func worker(jobs chan int64, result chan []byte) {
+	for job := range jobs {
+		bytes := generateBuff(job)
+		result <- bytes
 	}
-	l.current = l.current + 1
-}
-
-func (l *Lock) Done() {
-	if l.current == l.limit {
-		l.mu.Unlock()
-	}
-	l.current = l.current - 1
 }
 
 func main() {
 
-	writeFileCh := make(chan []byte)
+	writeFileCh := make(chan []byte, 1)
+	finish := make(chan int)
+
 	nGb := flag.Int64("n-gigabyte", 1, "file size generated in GB")
-	nBuffers := flag.Int64("n-buffers", 10, "number of buffer groups")
 	flag.Parse()
-
-	memoryLimit := 30
-
-	lock := Lock{limit: memoryLimit - 1}
 
 	fileSize := *nGb * 1_073_741_824
 	fmt.Println("file size:", fileSize)
 
-	var mainBufferWG sync.WaitGroup
-
 	nBlocks := fileSize / pkg.Page
 
-	blocksByGroup := nBlocks / *nBuffers
+	blocksByGroup := nBlocks / *nGb
 
 	if blocksByGroup < 1 {
 		panic("bad group blocks")
@@ -62,27 +44,37 @@ func main() {
 	defer file.Close()
 	b := bufio.NewWriter(file)
 	defer b.Flush()
+	c := int64(0)
 
 	go func() {
 		for {
-			v, ok := <-writeFileCh
+			v := <-writeFileCh
 			b.Write(v)
-			if !ok {
+			c++
+			if *nGb == c {
+				finish <- 1
+				close(writeFileCh)
 				return
 			}
 		}
 	}()
 
-	for i := int64(0); i < *nBuffers; i++ {
-		lock.Check()
-		mainBufferWG.Add(1)
-		go generateBuff(writeFileCh, blocksByGroup, &mainBufferWG, &lock)
+	// Worker implementation
+	nWorker := 4
+	job := make(chan int64)
+
+	// start workers
+	for i := 0; i < nWorker; i++ {
+		go worker(job, writeFileCh)
 	}
-	mainBufferWG.Wait()
-	close(writeFileCh)
+
+	for i := int64(0); i < *nGb; i++ {
+		job <- blocksByGroup
+	}
+	<-finish
 }
 
-func generateBuff(writeFileCh chan []byte, blocksByGroup int64, wg *sync.WaitGroup, l *Lock) {
+func generateBuff(blocksByGroup int64) []byte {
 	writeBf := make([]byte, blocksByGroup*pkg.Page)
 	var generateWaitGroup sync.WaitGroup
 	for i := int64(0); i < blocksByGroup; i++ {
@@ -91,9 +83,7 @@ func generateBuff(writeFileCh chan []byte, blocksByGroup int64, wg *sync.WaitGro
 		go RandStringBytesMaskImpr(buf, &generateWaitGroup)
 	}
 	generateWaitGroup.Wait()
-	writeFileCh <- writeBf
-	wg.Done()
-	l.Done()
+	return writeBf
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
