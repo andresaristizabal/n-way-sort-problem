@@ -42,10 +42,10 @@ func main() {
 	go func() {
 		for {
 			v, ok := <-writeFileCh
+			b.Write(v)
 			if !ok {
 				return
 			}
-			b.Write(v)
 		}
 	}()
 
