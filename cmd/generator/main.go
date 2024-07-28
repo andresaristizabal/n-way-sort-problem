@@ -11,12 +11,36 @@ import (
 	"sync"
 )
 
+type Lock struct {
+	limit   int
+	current int
+	mu      sync.Mutex
+}
+
+func (l *Lock) Check() {
+	if l.current >= l.limit {
+		l.mu.Lock()
+	}
+	l.current = l.current + 1
+}
+
+func (l *Lock) Done() {
+	if l.current == l.limit {
+		l.mu.Unlock()
+	}
+	l.current = l.current - 1
+}
+
 func main() {
 
 	writeFileCh := make(chan []byte)
 	nGb := flag.Int64("n-gigabyte", 1, "file size generated in GB")
 	nBuffers := flag.Int64("n-buffers", 10, "number of buffer groups")
 	flag.Parse()
+
+	memoryLimit := 30
+
+	lock := Lock{limit: memoryLimit - 1}
 
 	fileSize := *nGb * 1_073_741_824
 	fmt.Println("file size:", fileSize)
@@ -50,14 +74,15 @@ func main() {
 	}()
 
 	for i := int64(0); i < *nBuffers; i++ {
+		lock.Check()
 		mainBufferWG.Add(1)
-		go generateBuff(writeFileCh, blocksByGroup, &mainBufferWG)
+		go generateBuff(writeFileCh, blocksByGroup, &mainBufferWG, &lock)
 	}
 	mainBufferWG.Wait()
 	close(writeFileCh)
 }
 
-func generateBuff(writeFileCh chan []byte, blocksByGroup int64, wg *sync.WaitGroup) {
+func generateBuff(writeFileCh chan []byte, blocksByGroup int64, wg *sync.WaitGroup, l *Lock) {
 	writeBf := make([]byte, blocksByGroup*pkg.Page)
 	var generateWaitGroup sync.WaitGroup
 	for i := int64(0); i < blocksByGroup; i++ {
@@ -68,6 +93,7 @@ func generateBuff(writeFileCh chan []byte, blocksByGroup int64, wg *sync.WaitGro
 	generateWaitGroup.Wait()
 	writeFileCh <- writeBf
 	wg.Done()
+	l.Done()
 }
 
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789"
