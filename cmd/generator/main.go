@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"log"
 	"math/rand"
 	"n-way-sort/pkg"
@@ -13,14 +14,16 @@ import (
 func main() {
 
 	writeFileCh := make(chan []byte)
-	fileSize := flag.Int64("file-size", 1_073_741_824, "file size generated")
+	nGb := flag.Int64("n-gigabyte", 1, "file size generated in GB")
 	nBuffers := flag.Int64("n-buffers", 10, "number of buffer groups")
-
 	flag.Parse()
+
+	fileSize := *nGb * 1_073_741_824
+	fmt.Println("file size:", fileSize)
 
 	var mainBufferWG sync.WaitGroup
 
-	nBlocks := *fileSize / pkg.Page
+	nBlocks := fileSize / pkg.Page
 
 	blocksByGroup := nBlocks / *nBuffers
 
