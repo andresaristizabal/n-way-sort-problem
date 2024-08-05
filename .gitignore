@@ -1,3 +1,5 @@
 .idea/
 input.txt
 main
+tmp/
+*/**.txt

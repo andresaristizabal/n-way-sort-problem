@@ -26,7 +26,7 @@ func main() {
 	nGb := flag.Int64("n-gigabyte", 1, "file size generated in GB")
 	flag.Parse()
 
-	fileSize := *nGb * 1_073_741_824
+	fileSize := *nGb * pkg.GB
 	fmt.Println("file size:", fileSize)
 
 	nBlocks := fileSize / pkg.Page
