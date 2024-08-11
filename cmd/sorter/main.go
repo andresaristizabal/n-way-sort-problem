@@ -51,6 +51,9 @@ func main() {
 	check(err)
 	fileSize := stat.Size()
 	nFiles := int(fileSize / int64(pkg.GB*(*nGb)))
+	if fileSize%int64(*nGb*pkg.GB) != 0 {
+		panic("file size must be multiple of nGb")
+	}
 	fmt.Println("number of files: ", nFiles)
 	writeJob := make(chan writePart)
 	var wg sync.WaitGroup
