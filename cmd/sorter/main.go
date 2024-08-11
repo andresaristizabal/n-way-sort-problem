@@ -17,27 +17,36 @@ func check(e error) {
 type writePart struct {
 	fileName string
 	index    int
+	data     []byte
 }
 
-func writeWorker(jobs chan writePart, file *os.File, group *sync.WaitGroup, gbByFile int) {
-	for job := range jobs {
+func writeWorker(writeJobs chan *writePart, group *sync.WaitGroup) {
+	for job := range writeJobs {
 		f, err := os.Create(job.fileName)
 		check(err)
+		f.Write(job.data)
+		group.Done()
+	}
+}
+
+func readWorker(readJobs chan *writePart, writeJobs chan *writePart, file *os.File, gbByFile int) {
+	for writeJob := range readJobs {
 		bytePerFile := pkg.GB * gbByFile
 		b := make([]byte, bytePerFile)
-		readAt, err := file.ReadAt(b, int64(job.index*(bytePerFile)))
+		readAt, err := file.ReadAt(b, int64(writeJob.index*(bytePerFile)))
 		check(err)
 		if readAt != bytePerFile {
 			panic("error on read")
 		}
-		f.Write(b)
-		group.Done()
+		writeJob.data = b
+		writeJobs <- writeJob
 	}
 }
 
 func main() {
 	filePath := flag.String("file-input", "", "input file")
-	nWorkers := flag.Int("n-workers", 2, "input file")
+	rWorkers := flag.Int("r-workers", 2, "input file")
+	wWorkers := flag.Int("w-workers", 1, "input file")
 	nGb := flag.Int("n-gb", 1, "input file")
 	flag.Parse()
 	err := os.RemoveAll("tmp")
@@ -55,14 +64,18 @@ func main() {
 		panic("file size must be multiple of nGb")
 	}
 	fmt.Println("number of files: ", nFiles)
-	writeJob := make(chan writePart)
+	readJob := make(chan *writePart)
+	writeJob := make(chan *writePart)
 	var wg sync.WaitGroup
-	for i := 0; i < *nWorkers; i++ {
-		go writeWorker(writeJob, file, &wg, *nGb)
+	for i := 0; i < *rWorkers; i++ {
+		go readWorker(readJob, writeJob, file, *nGb)
+	}
+	for i := 0; i < *wWorkers; i++ {
+		go writeWorker(writeJob, &wg)
 	}
 	for i := 0; i < nFiles; i++ {
 		wg.Add(1)
-		writeJob <- writePart{
+		readJob <- &writePart{
 			fileName: fmt.Sprintf("tmp/file-%d.txt", i),
 			index:    i,
 		}
