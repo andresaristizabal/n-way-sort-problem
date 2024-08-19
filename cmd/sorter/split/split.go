@@ -1,10 +1,12 @@
 package split
 
 import (
+	"bytes"
 	"fmt"
 	"n-way-sort/cmd/sorter/common"
 	"n-way-sort/pkg"
 	"os"
+	"slices"
 	"sync"
 )
 
@@ -20,12 +22,24 @@ type writePart struct {
 	data     []byte
 }
 
-func writeWorker(writeJobs chan *writePart, group *sync.WaitGroup, files []*os.File) {
+func writeWorker(writeJobs chan *writePart, group *sync.WaitGroup, files []*os.File, config common.Config) {
 	for job := range writeJobs {
 		f, err := os.Create(job.fileName)
 		check(err)
-		f.Write(job.data)
-		files = append(files, f)
+		pages := make([][]byte, (config.NGb*pkg.GB)/pkg.Page)
+		for i, _ := range pages {
+			pages[i] = job.data[(i * pkg.Page):((i * pkg.Page) + pkg.Page)]
+		}
+		// TODO: move it to a worker
+		slices.SortFunc(pages, func(a, b []byte) int {
+			return bytes.Compare(a, b)
+		})
+		for _, p := range pages {
+			_, err = f.Write(p)
+			check(err)
+		}
+		f.Sync()
+		files[job.index] = f
 		group.Done()
 	}
 }
@@ -68,7 +82,7 @@ func Split(config common.Config) []*os.File {
 		go readWorker(readJob, writeJob, file, config.NGb)
 	}
 	for i := 0; i < config.WWorkers; i++ {
-		go writeWorker(writeJob, &wg, resultFiles)
+		go writeWorker(writeJob, &wg, resultFiles, config)
 	}
 	for i := 0; i < nFiles; i++ {
 		wg.Add(1)

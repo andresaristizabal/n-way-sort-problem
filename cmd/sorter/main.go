@@ -15,8 +15,8 @@ func check(e error) {
 func main() {
 	filePath := flag.String("file-input", "", "input file")
 	rWorkers := flag.Int("r-workers", 2, "number of read workers")
-	wWorkers := flag.Int("w-workers", 1, "number of write workers")
-	nGb := flag.Int("n-gb", 1, "number of gb per file")
+	wWorkers := flag.Int("w-workers", 2, "number of write workers")
+	nGb := flag.Int("n-gb", 2, "number of gb per file")
 	flag.Parse()
 	config := common.Config{
 		FilePath: *filePath,
