@@ -2,15 +2,9 @@ package main
 
 import (
 	"flag"
-	"n-way-sort/cmd/sorter/common"
-	"n-way-sort/cmd/sorter/split"
+	"n-way-sort/pkg/sorting"
+	"n-way-sort/pkg/utils"
 )
-
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
 
 func main() {
 	filePath := flag.String("file-input", "", "input file")
@@ -18,11 +12,11 @@ func main() {
 	wWorkers := flag.Int("w-workers", 2, "number of write workers")
 	nGb := flag.Int("n-gb", 2, "number of gb per file")
 	flag.Parse()
-	config := common.Config{
+	config := utils.Config{
 		FilePath: *filePath,
 		RWorkers: *rWorkers,
 		WWorkers: *wWorkers,
 		NGb:      *nGb,
 	}
-	split.Split(config)
+	sorting.Split(config)
 }
