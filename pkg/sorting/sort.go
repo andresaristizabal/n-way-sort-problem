@@ -88,7 +88,6 @@ func (f *FileHeap) Start(writeChannel chan []byte, filePerReaders []FilePerReade
 		_, err := fpr.reader.Peek(len(page))
 
 		if err != nil {
-			fmt.Printf("file %s, finished \n", v.filePerReader.file.Name())
 			nextFilePerReader, err := getNextFile(&filePerReaders, v, page)
 			if err != nil {
 				drainHeap(f, writeChannel, outputBuffer, file)
@@ -146,7 +145,7 @@ func Sort(config utils.Config) {
 		bufio.NewReader(f)
 		files = append(files, f)
 	}
-	// TODO: check if this is compitable with Page size
+	// TODO: check if this is compitable with Page size and improve it
 	initialBytesPerFile := int(utils.GB / (4 * (stat.Size() / utils.GB) / 25))
 	h := &FileHeap{}
 
