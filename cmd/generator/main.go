@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"n-way-sort/pkg"
+	"n-way-sort/pkg/utils"
 	"os"
 	"sync"
 )
@@ -26,10 +26,10 @@ func main() {
 	nGb := flag.Int64("n-gigabyte", 1, "file size generated in GB")
 	flag.Parse()
 
-	fileSize := *nGb * pkg.GB
+	fileSize := *nGb * utils.GB
 	fmt.Println("file size:", fileSize)
 
-	nBlocks := fileSize / pkg.Page
+	nBlocks := fileSize / utils.Page
 
 	blocksByGroup := nBlocks / *nGb
 
@@ -75,11 +75,11 @@ func main() {
 }
 
 func generateBuff(blocksByGroup int64) []byte {
-	writeBf := make([]byte, blocksByGroup*pkg.Page)
+	writeBf := make([]byte, blocksByGroup*utils.Page)
 	var generateWaitGroup sync.WaitGroup
 	for i := int64(0); i < blocksByGroup; i++ {
 		generateWaitGroup.Add(1)
-		buf := writeBf[pkg.Page*i : pkg.Page*i+pkg.Page]
+		buf := writeBf[utils.Page*i : utils.Page*i+utils.Page]
 		go RandStringBytesMaskImpr(buf, &generateWaitGroup)
 	}
 	generateWaitGroup.Wait()
