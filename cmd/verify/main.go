@@ -21,7 +21,7 @@ func checkOrderFile(file <-chan *os.File, gbPerFile int, group *sync.WaitGroup) 
 		for i := 0; i < pagePerPage; i++ {
 			f.ReadAt(nextPage, int64(i*utils.Page))
 			if bytes.Compare(currentPage, nextPage) == 1 {
-				panic(fmt.Sprintf("File is not ordered: %s, block: %i", f.Name(), i))
+				panic(fmt.Sprintf("File is not ordered: %s, block: %v", f.Name(), i))
 			}
 			currentPage = slices.Clone(nextPage)
 		}
@@ -85,7 +85,7 @@ func main() {
 		for i := int64(0); i < pagePerPage; i++ {
 			f.ReadAt(nextPage, int64(i*utils.Page))
 			if bytes.Compare(currentPage, nextPage) == 1 {
-				panic(fmt.Sprintf("File is not ordered: %s, block: %i", f.Name(), i))
+				panic(fmt.Sprintf("File is not ordered: %s, block: %v", f.Name(), i))
 			}
 			currentPage = slices.Clone(nextPage)
 		}
