@@ -10,6 +10,7 @@ type Config struct {
 	RWorkers int
 	WWorkers int
 	NGb      int
+	MaxRamGb int
 }
 
 func CheckError(e error) {
