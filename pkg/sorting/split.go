@@ -16,27 +16,31 @@ type writePart struct {
 	expectedBytes int64
 }
 
-func writeWorker(writeJobs chan *writePart, group *sync.WaitGroup, files []*os.File, config utils.Config) {
+func writeWorker(writeJobs chan *writePart, group *sync.WaitGroup) {
 	for job := range writeJobs {
 		f, err := os.Create(job.fileName)
 		utils.CheckError(err)
+		f.Write(job.data)
+		f.Sync()
+		group.Done()
+	}
+}
+
+func orderWorker(orderJob chan *writePart, writeChannel chan *writePart) {
+	for job := range orderJob {
 		numberOfPages := job.expectedBytes / utils.Page
 		pages := make([][]byte, 0, numberOfPages)
 		for i := int64(0); i < int64(numberOfPages); i++ {
 			pages = append(pages, job.data[(i*utils.Page):((i*utils.Page)+utils.Page)])
 		}
-		// TODO: move it to a worker
 		slices.SortFunc(pages, bytes.Compare)
-		for _, p := range pages {
-			f.Write(p)
-		}
-		f.Sync()
-		files[job.index] = f
-		group.Done()
+		job.data = slices.Concat(pages...)
+		pages = nil
+		writeChannel <- job
 	}
 }
 
-func readWorker(readJobs chan *writePart, writeJobs chan *writePart, file *os.File, gbByFile int) {
+func readWorker(readJobs chan *writePart, orderJobs chan *writePart, file *os.File, gbByFile int) {
 	for writeJob := range readJobs {
 		b := make([]byte, writeJob.expectedBytes)
 		readAt, err := file.ReadAt(b, int64(writeJob.index)*writeJob.expectedBytes)
@@ -46,7 +50,7 @@ func readWorker(readJobs chan *writePart, writeJobs chan *writePart, file *os.Fi
 			panic("error on read")
 		}
 		writeJob.data = b
-		writeJobs <- writeJob
+		orderJobs <- writeJob
 	}
 }
 
@@ -75,14 +79,19 @@ func Split(config utils.Config) []*os.File {
 
 	readJob := make(chan *writePart)
 	writeJob := make(chan *writePart)
+	orderJob := make(chan *writePart)
+
 	resultFiles := make([]*os.File, nFiles)
 
 	var wg sync.WaitGroup
 	for i := 0; i < config.RWorkers; i++ {
-		go readWorker(readJob, writeJob, file, config.NGb)
+		go readWorker(readJob, orderJob, file, config.NGb)
 	}
 	for i := 0; i < config.WWorkers; i++ {
-		go writeWorker(writeJob, &wg, resultFiles, config)
+		go orderWorker(orderJob, writeJob)
+	}
+	for i := 0; i < config.WWorkers; i++ {
+		go writeWorker(writeJob, &wg)
 	}
 	for i := 0; i < nFiles; i++ {
 		wg.Add(1)
