@@ -9,6 +9,7 @@ type Config struct {
 	FilePath string
 	RWorkers int
 	WWorkers int
+	OWorkers int
 	NGb      int
 	MaxRamGb int
 }
