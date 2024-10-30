@@ -71,15 +71,15 @@ func Sort(config utils.Config) {
 	files := make([]*os.File, 0)
 	filePerReaders := make([]FilePerReader, 0)
 	utils.CheckError(err)
-	stat, err := inputFile.Stat()
 	dir, _ := os.ReadDir("tmp")
+
 	for i := 0; i < len(dir); i++ {
 		f, _ := os.Open(fmt.Sprintf("tmp/file-%d.txt", i))
 		bufio.NewReader(f)
 		files = append(files, f)
 	}
 	// TODO: check if this is compitable with Page size and improve it
-	initialBytesPerFile := int(utils.GB / (4 * (stat.Size() / utils.GB) / 25))
+	initialBytesPerFile := utils.Page
 	h := &FileHeap{}
 
 	fmt.Println("Creating final reader")

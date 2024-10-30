@@ -56,8 +56,7 @@ func readWorker(readJobs chan *writePart, orderJobs chan *writePart, file *os.Fi
 
 func Split(config utils.Config) []*os.File {
 	err := os.RemoveAll("tmp")
-	if err != nil {
-	}
+	utils.CheckError(err)
 	err = os.MkdirAll("tmp", 0777)
 	utils.CheckError(err)
 	file, err := os.Open(config.FilePath)
