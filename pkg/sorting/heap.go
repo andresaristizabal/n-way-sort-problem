@@ -52,7 +52,7 @@ func (f *FileHeap) Pop() any {
 }
 
 func (f *FileHeap) Start(writeChannel chan []byte, filePerReaders []FilePerReader, file *os.File) {
-	capacityBuf := utils.GB * 1
+	capacityBuf := utils.GB / 2
 	outputBuffer := make([]byte, 0, capacityBuf)
 	for f.Len() > 0 {
 		v := heap.Pop(f).(PageShort)
