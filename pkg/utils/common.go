@@ -8,12 +8,14 @@ const (
 )
 
 type Config struct {
-	FilePath string
-	RWorkers int
-	WWorkers int
-	OWorkers int
-	NGb      int
-	MaxRamGb int
+	FilePath  string
+	RWorkers  int
+	WWorkers  int
+	OWorkers  int
+	NGb       int
+	MaxRamGb  int
+	OnlySplit bool
+	OnlySort  bool
 }
 
 func CheckError(e error) {
@@ -29,14 +31,18 @@ func LoadConfig() Config {
 	oWorkers := flag.Int("o-workers", 2, "number of write workers")
 	nGb := flag.Int("n-gb", 2, "number of gb per file")
 	maxRamGb := flag.Int("max-gb", 25, "Max RAM in GB")
+	onlySplit := flag.Bool("only-split", false, "only split the input file")
+	onlySort := flag.Bool("only-sort", false, "only sort using tmp temporal files folder")
 	flag.Parse()
 	config := Config{
-		FilePath: *filePath,
-		RWorkers: *rWorkers,
-		WWorkers: *wWorkers,
-		OWorkers: *oWorkers,
-		NGb:      *nGb,
-		MaxRamGb: *maxRamGb * GB,
+		FilePath:  *filePath,
+		RWorkers:  *rWorkers,
+		WWorkers:  *wWorkers,
+		OWorkers:  *oWorkers,
+		NGb:       *nGb,
+		MaxRamGb:  *maxRamGb * GB,
+		OnlySplit: *onlySplit,
+		OnlySort:  *onlySort,
 	}
 	return config
 }
