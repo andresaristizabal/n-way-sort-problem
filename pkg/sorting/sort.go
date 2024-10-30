@@ -56,10 +56,20 @@ func wWorker(bytes <-chan []byte, file *os.File) {
 }
 
 func Sort(config utils.Config) {
-	_ = Split(config)
-	files := make([]*os.File, 0, 25)
-	filePerReaders := make([]FilePerReader, 0, 25)
-	inputFile, err := os.Open(config.FilePath)
+	if !config.OnlySort {
+		_ = Split(config)
+	} else {
+		fmt.Println("skip split and use tmp files")
+	}
+	if config.OnlySplit {
+		fmt.Println("Only split")
+		return
+	}
+	err := os.Remove("tmp/final.txt")
+	if err != nil {
+	}
+	files := make([]*os.File, 0)
+	filePerReaders := make([]FilePerReader, 0)
 	utils.CheckError(err)
 	stat, err := inputFile.Stat()
 	dir, _ := os.ReadDir("tmp")
@@ -72,9 +82,6 @@ func Sort(config utils.Config) {
 	initialBytesPerFile := int(utils.GB / (4 * (stat.Size() / utils.GB) / 25))
 	h := &FileHeap{}
 
-	err = os.Remove("tmp/final.txt")
-	if err != nil {
-	}
 	fmt.Println("Creating final reader")
 	finalFile, err := os.Create("tmp/final.txt")
 	utils.CheckError(err)
