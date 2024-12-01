@@ -1,5 +1,26 @@
-# n-way-sort-problem
-N way sort problem 
+# Merge sort
+### Wait is the problem?
+The idea is ordering a big file with `N` GB size, but it is not possible to load this file in RAM memory, for example
+50 GB file, in a machine with 32 GB.
+
+### High level soluction
+The idea is to split the large file into smaller files, sort each of these smaller files, and then process them 
+as follows: 
+- load the first element from each file
+- identify the smallest element among them
+- write it to the output file,
+- get a new item from the file that had the smallest element
+- repeat until all files are empty
+
+```mermaid
+graph TD
+    A[Split file] --> B[Sort files]
+    B --> C[Get first element]
+    C --> D[Compare elements]
+    D --> E[Write to output]
+    E --> F[Get new element]
+    F --> D
+```
 
 ## first generator code timing
 ```sh
